@@ -1,9 +1,10 @@
 import androidx.compose.desktop.ui.tooling.preview.Preview
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableState
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.MaterialTheme
-import androidx.compose.material.Text
+import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,6 +26,7 @@ import javax.swing.JFileChooser
 
 private val defFileField = File("file path")
 
+
 @OptIn(DelicateCoroutinesApi::class)
 @Composable
 @Preview
@@ -35,6 +37,11 @@ fun App() {
 
     var filePrimary by remember { mutableStateOf(defFileField) }
     var fileNew by remember { mutableStateOf(defFileField) }
+
+    var progress by remember { mutableStateOf(0.0f) }
+
+    var primaryOUT by remember { mutableStateOf("") }
+    var newOut by remember { mutableStateOf("") }
 
 
     MaterialTheme(colors = LightColorPalette) {
@@ -60,100 +67,165 @@ fun App() {
             }
             Column(modifier = Modifier.background(greyMid).fillMaxWidth()) {
                 Text(
-                    text = filePrimary.name,
+                    text = "Эталонный: " + filePrimary.name,
                     color = Color.White,
                     modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally),
                 )
-                Text(text = fileNew.name,
+                Surface(modifier = Modifier.height(8.dp)) { }
+                Text(
+                    text = "Проверяемый: " + fileNew.name,
                     color = Color.White,
-                    modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally))
+                    modifier = Modifier.padding(vertical = 8.dp).align(Alignment.CenterHorizontally)
+                )
             }
-
             Button(onClick = {
                 if (filePrimary == defFileField) return@Button
                 if (fileNew == defFileField) return@Button
+
+                result = ""
+                error = ""
+                primaryOUT = ""
+                newOut = ""
+
                 GlobalScope.launch {
+                    progress = 0.1f
                     val primaryOut = query(runCheck(filePrimary))
+                    progress = 0.4f
                     val newFile = query(runCheck(fileNew))
+                    progress = 0.8f
+
                     val isSineEquals = primaryOut == newFile
-                    if(isSineEquals){
-                        result = isSineEquals.toString()
-                    }else{
-                        error = isSineEquals.toString()
-                    }
-                    println("$primaryOut  \n  $newFile")
+                        primaryOUT = primaryOut
+                        newOut = newFile
+                        if (isSineEquals) {
+                            result = "Равны ли подписи: $isSineEquals"
+                        } else {
+                            error = "Проверка не удалась $isSineEquals"
+                        }
+
+                    progress = 1.0f
+                    progress = 0.0f
                 }
 
             }) {
                 Text(text = text, modifier = Modifier.padding(start = 16.dp, end = 16.dp))
             }
 
-
+            CircularProgressIndicator(progress = progress, modifier = Modifier.padding(vertical = 8.dp))
             Column() {
-                Text(text = result, color = accent,fontSize = 16.sp)
-                Text(text = error, color = Color.Red,fontSize = 16.sp)
+                Text(text = result, color = accent, fontSize = 16.sp)
+                Text(text = error, color = Color.Red, fontSize = 16.sp)
             }
 
+            compare(primaryOUT, newOut)
 
         }
 
     }
 }
 
-fun query(results: Results): String =
-    when (results) {
-        is Results.Success -> {
-            results.data
-        }
-        is Results.Error -> {
-            results.error
-        }
-        else -> {
-            "Fail"
-        }
-    }
-
-fun main() = application {
-    Window(onCloseRequest = ::exitApplication, title = "Singer") {
-        App()
+@Composable
+@Preview
+fun compare(primary: String, secondary: String) {
+    Row(horizontalArrangement = Arrangement.SpaceAround,
+        verticalAlignment = Alignment.CenterVertically,modifier = Modifier.fillMaxSize().scrollable(
+            state = ScrollableState { 0f },orientation = Orientation.Vertical
+        )
+        ) {
+        Text(
+            text = primary,
+            color = accent,
+            fontSize = 12.sp,
+        )
+        Text(
+            text = secondary,
+            color = greyMid,
+            fontSize = 12.sp,
+        )
     }
 }
 
+fun getPairs(primary: String, secondary: String): Pair<String, String> {
+    val primaryTags = primary.slice()
+    val secondaryTags = secondary.slice()
 
-fun runCheck(file: File): Results {
-    val runtime = Runtime.getRuntime()
-        .exec("powershell.exe .\\src\\main\\assets\\apksigner  verify --print-certs -v ${file.absolutePath}")
-    BufferedWriter(OutputStreamWriter(runtime.outputStream)).close()
-    BufferedReader(InputStreamReader(runtime.inputStream)).useLines { lines ->
-        val result = lines.toList().joinToString(separator = System.lineSeparator())
-        if (result.isNotBlank())
-            return Results.Success(result)
-    }
+    val setOfAllKeys = primaryTags.keys + secondaryTags.keys
+    setOfAllKeys.onEachIndexed { index: Int, key: String ->
+        if (primaryTags.containsKey(key) && secondaryTags.containsKey(key)) {
+            primaryTags[key]
 
-    BufferedReader(InputStreamReader(runtime.errorStream)).useLines { errors ->
-        val error = errors.toList().joinToString(separator = System.lineSeparator())
-        if (error.isNotBlank())
-            return Results.Error(error)
+        }
+
     }
-    return Results.Fail
+    return "" to ""
 }
 
-private val defFile = File("file path")
 
-fun chooseFile(name: String = "Выберите Файл"): File {
-    JFileChooser().run {
-        currentDirectory = File(".")
-        dialogTitle = name
-        fileFilter = ApkFilter()
-        fileSelectionMode = JFileChooser.FILES_ONLY
-        isAcceptAllFileFilterUsed = false
-        return if (showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-            selectedFile
+private fun String.slice(): Map<String, String> =
+    split("\n").associate {
+        val field = it.split(":", ignoreCase = true, limit = 1)
+        if (field.size > 1) {
+            field[0] to field[1]
         } else {
-            defFile
+            field[0] to field[0]
+        }
+    }
+
+
+        fun query(results: Results): String =
+            when (results) {
+                is Results.Success -> {
+                    results.data
+                }
+                is Results.Error -> {
+                    results.error
+                }
+                else -> {
+                    "Fail"
+                }
+            }
+
+        fun main() = application {
+            Window(onCloseRequest = ::exitApplication, title = "Signature Test") {
+                App()
+            }
         }
 
-    }
-}
+
+        fun runCheck(file: File): Results {
+            val runtime = Runtime.getRuntime()
+                .exec("powershell.exe .\\src\\main\\assets\\apksigner  verify --print-certs -v '${file.absolutePath}'")
+            BufferedWriter(OutputStreamWriter(runtime.outputStream)).close()
+            BufferedReader(InputStreamReader(runtime.inputStream)).useLines { lines ->
+                val result = lines.toList().joinToString(separator = System.lineSeparator())
+                if (result.isNotBlank())
+                    return Results.Success(result)
+            }
+
+            BufferedReader(InputStreamReader(runtime.errorStream)).useLines { errors ->
+                val error = errors.toList().joinToString(separator = System.lineSeparator())
+                if (error.isNotBlank())
+                    return Results.Error(error)
+            }
+            return Results.Fail
+        }
+
+        private val defFile = File("file path")
+
+        fun chooseFile(name: String = "Выберите Файл"): File {
+            JFileChooser().run {
+                currentDirectory = File(".")
+                dialogTitle = name
+                fileFilter = ApkFilter()
+                fileSelectionMode = JFileChooser.FILES_ONLY
+                isAcceptAllFileFilterUsed = false
+                return if (showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
+                    selectedFile
+                } else {
+                    defFile
+                }
+
+            }
+        }
 
 
