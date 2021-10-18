@@ -4,7 +4,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm") version "1.5.31"
-    id("org.jetbrains.compose") version "1.0.0-alpha4-build362"
+    id("org.jetbrains.compose") version "1.0.0-alpha4-build398"
 }
 
 group = "ru.meseen.dev"
@@ -19,6 +19,7 @@ repositories {
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.5.31")
     implementation(compose.desktop.currentOs)
+    implementation("com.android.tools.build:apksig:7.0.3")
 }
 tasks.test {
     useJUnitPlatform()
