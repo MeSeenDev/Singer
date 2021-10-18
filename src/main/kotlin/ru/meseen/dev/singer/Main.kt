@@ -13,14 +13,12 @@ import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.res.loadImageBitmap
 import androidx.compose.ui.res.useResource
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.WindowState
 import androidx.compose.ui.window.singleWindowApplication
 import kotlinx.coroutines.*
-import ru.meseen.dev.singer.Certificate
+import ru.meseen.dev.singer.verify.Certificate
 import ru.meseen.dev.singer.FilePicker.chooseFile
 import ru.meseen.dev.singer.FilePicker.defFile
 import ru.meseen.dev.singer.Results
@@ -130,6 +128,7 @@ fun Singer() {
                 Text(text = error, color = Color.Red, fontSize = 16.sp, modifier = Modifier.padding(vertical = 8.dp))
             }
 
+            if(primaryCert != Certificate() && secondaryCert != Certificate())
             fileDataList(PrintableItem(primary = primaryCert, secondary = secondaryCert))
 
         }
@@ -202,11 +201,11 @@ fun fileDataList(printableItem: PrintableItem) {
                     )
                     certItem(
                         nameField = "Signer #$index key size (bits):",
-                        primary = if(primary.keySize > 0) "unknown" else primary.keySize.toString(),
-                        secondary = if(secondary.keySize > 0) "unknown" else secondary.keySize.toString(),
+                        primary = if(primary.keySize < 0) "unknown" else primary.keySize.toString(),
+                        secondary = if(secondary.keySize < 0) "unknown" else secondary.keySize.toString(),
                     )
                     certItem(
-                        nameField = "Signer $index public key SHA-256 digest:",
+                        nameField = "Signer #$index public key SHA-256 digest:",
                         primary = primary.publicKeySHA256,
                         secondary = secondary.publicKeySHA256
                     )
