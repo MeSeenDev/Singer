@@ -19,6 +19,7 @@ repositories {
 dependencies {
     testImplementation("org.jetbrains.kotlin:kotlin-test:1.5.31")
     implementation(compose.desktop.currentOs)
+    implementation("com.android.tools.build:apksig:7.0.3")
 }
 tasks.test {
     useJUnitPlatform()

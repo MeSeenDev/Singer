@@ -1,7 +1,7 @@
 package ru.meseen.dev.singer
 
-sealed class Results {
-    data class Success(val data: String) : Results()
-    data class Error(val error: String) : Results()
-    object Fail : Results()
+sealed class Results<out R> {
+    data class Success<out Type> (val data: Type) : Results<Type>()
+    data class Error(val error: Throwable) : Results<Nothing>()
+    object Fail : Results<Nothing>()
 }

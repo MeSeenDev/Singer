@@ -9,7 +9,7 @@ import javax.swing.JFileChooser
  */
 object FilePicker {
 
-    val defFile = File("file path")
+    val defFile = File("File Name")
 
 
     fun chooseFile(name: String = "Выберите Файл"): File {
